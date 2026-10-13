@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nova — App Screens · Design Canvas V1</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #111110;
+    --bg-subtle: #191918;
+    --surface: #1e1e1d;
+    --surface-raised: #252524;
+    --border: rgba(255,255,255,0.06);
+    --border-hover: rgba(255,255,255,0.12);
+    --accent: var(--zwork-preview-accent, #8b98ab);
+    --accent-dim: rgba(139,152,171,0.15);
+    --text: #e8e6e3;
+    --text-secondary: rgba(232,230,227,0.6);
+    --text-tertiary: rgba(232,230,227,0.32);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.25);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,0.45), 0 4px 12px rgba(0,0,0,0.3);
+    --shadow-drag: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1.5px var(--accent);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --font-sans: var(--zwork-preview-font-family, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif);
+    --font-mono: "Cascadia Code", "Consolas", "SF Mono", monospace;
+    --note-bg: #242623;
+    --note-border: rgba(139,152,171,0.18);
+    --transition-fast: 120ms cubic-bezier(0.25, 0.1, 0.25, 1);
+    --transition-normal: 200ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    font-family: var(--font-sans);
+    color: var(--text);
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 512px 512px;
+    mix-blend-mode: overlay;
+  }
+
+  .canvas-viewport { position: fixed; inset: 0; overflow: hidden; cursor: grab; --grid-color: rgba(255,255,255,0.04); }
+  .canvas-viewport.panning { cursor: grabbing; }
+  .canvas-world { position: absolute; left: 0; top: 0; width: 20000px; height: 20000px; transform-origin: 0 0; will-change: transform; }
+
+  .canvas-el { position: absolute; cursor: grab; transition: box-shadow var(--transition-normal), transform var(--transition-fast); }
+  .canvas-el:hover { z-index: 10; }
+  .canvas-el.dragging { cursor: grabbing; z-index: 999; box-shadow: var(--shadow-drag) !important; transform: scale(1.01); transition: none; }
+
+  .section-header { position: absolute; pointer-events: none; display: flex; align-items: center; gap: 16px; white-space: nowrap; }
+  .section-header .section-num { font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.08em; color: var(--accent); opacity: 0.8; }
+  .section-header .section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-tertiary); }
+  .section-header .section-line { flex: none; width: 48px; height: 1px; background: linear-gradient(90deg, var(--accent) 0%, transparent 100%); opacity: 0.3; }
+
+  .canvas-title { position: absolute; pointer-events: none; font-weight: 700; line-height: 1.1; letter-spacing: -0.025em; color: var(--text); }
+  .canvas-text { position: absolute; line-height: 1.7; letter-spacing: 0.005em; color: var(--text-secondary); min-width: 200px; max-width: 560px; white-space: pre-wrap; word-break: break-word; }
+
+  .canvas-tag { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 100px; font-size: 12px; font-weight: 500; letter-spacing: 0.02em; color: var(--text-secondary); background: var(--surface); border: 1px solid var(--border); transition: border-color var(--transition-fast), background var(--transition-fast); white-space: nowrap; }
+  .canvas-tag:hover { border-color: var(--border-hover); background: var(--surface-raised); }
+  .canvas-tag .tag-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+
+  .context-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; min-width: 220px; transition: border-color var(--transition-normal), box-shadow var(--transition-normal); }
+  .context-card:hover { border-color: var(--border-hover); box-shadow: var(--shadow-md); }
+  .context-card .card-head { padding: 16px 20px 12px; display: flex; align-items: center; gap: 10px; }
+  .context-card .card-head .head-indicator { width: 3px; height: 16px; border-radius: 2px; background: var(--accent); flex-shrink: 0; }
+  .context-card .card-head h3 { font-size: 13px; font-weight: 600; color: var(--text); }
+  .context-card .card-content { padding: 0 20px 20px; font-size: 13px; line-height: 1.7; color: var(--text-secondary); }
+  .context-card .card-content ul { list-style: none; }
+  .context-card .card-content li { padding: 4px 0 4px 12px; position: relative; }
+  .context-card .card-content li::before { content: ''; position: absolute; left: 0; top: 11px; width: 4px; height: 4px; border-radius: 50%; background: var(--text-tertiary); }
+
+  .ds-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; transition: border-color var(--transition-normal), box-shadow var(--transition-normal); }
+  .ds-card:hover { border-color: var(--border-hover); box-shadow: var(--shadow-md); }
+  .ds-card .ds-head { padding: 16px 20px 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-tertiary); }
+  .ds-card .ds-body { padding: 0 20px 20px; }
+
+  .canvas-note { background: var(--note-bg); border: 1px solid var(--note-border); border-radius: var(--radius-md); padding: 16px 18px; min-width: 200px; max-width: 300px; box-shadow: var(--shadow-sm); transition: box-shadow var(--transition-normal); }
+  .canvas-note:hover { box-shadow: var(--shadow-md); }
+  .canvas-note .note-tag { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); opacity: 0.7; margin-bottom: 8px; }
+  .canvas-note .note-body { font-size: 13px; line-height: 1.65; color: var(--text-secondary); }
+
+  .design-page { background: #fff; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-lg); transition: box-shadow var(--transition-normal); }
+  .design-page:hover { box-shadow: 0 16px 56px rgba(0,0,0,0.5), 0 6px 16px rgba(0,0,0,0.35); }
+  .design-page .page-content { width: 100%; height: 100%; overflow: hidden; }
+  .page-label { position: absolute; bottom: -32px; left: 0; font-size: 11px; font-weight: 500; letter-spacing: 0.02em; color: var(--text-tertiary); white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+  .page-label .label-num { font-family: var(--font-mono); font-size: 10px; color: var(--accent); opacity: 0.6; }
+
+  .zoom-controls { position: fixed; bottom: 24px; right: 24px; display: flex; align-items: center; gap: 1px; z-index: 100; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-md); }
+  .zoom-btn { width: 36px; height: 36px; background: transparent; border: none; color: var(--text-secondary); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background var(--transition-fast), color var(--transition-fast); }
+  .zoom-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+  .zoom-btn:active { background: rgba(255,255,255,0.03); }
+  .zoom-label { min-width: 50px; height: 36px; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+
+  .coord-indicator { position: fixed; bottom: 28px; left: 24px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.04em; color: var(--text-tertiary); z-index: 100; padding: 4px 10px; background: rgba(17,17,16,0.85); border: 1px solid var(--border); border-radius: var(--radius-sm); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+
+  .kbd-hint { position: fixed; top: 20px; right: 24px; z-index: 100; font-size: 10px; color: var(--text-tertiary); display: flex; gap: 12px; opacity: 0; transition: opacity 0.4s ease; pointer-events: none; }
+  .canvas-viewport:hover ~ .kbd-hint { opacity: 1; }
+  .kbd-hint kbd { font-family: var(--font-mono); padding: 2px 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-size: 10px; }
+
+  /* ═══════════ NOVA DESIGN SYSTEM — tokens & primitives (shared by every screen frame) ═══════════ */
+  .nv{--A:var(--zwork-preview-accent,#3fe0ff);--A2:#8deeff;--As:rgba(63,224,255,.13);--onA:#031018;--cy:#3fe0ff;--vi:#a78bff;--viS:rgba(167,139,255,.14);--mg:#ff6ad5;--bg0:#04060d;--bg1:#070b15;--bg2:#0a1120;--bg3:#0e1830;--glass:rgba(10,17,32,.62);--bgh:rgba(141,238,255,.06);--bd:rgba(141,238,255,.12);--bd2:rgba(141,238,255,.26);--fg:#e9f5ff;--fg2:#9fb6d8;--fg3:#5f7596;--ok:#4beaaf;--okS:rgba(75,234,175,.12);--okG:rgba(75,234,175,.45);--er:#ff6b8a;--erS:rgba(255,107,138,.13);--wn:#ffc861;--wnS:rgba(255,200,97,.13);--glow:0 0 18px rgba(63,224,255,.3);--glowS:0 0 10px rgba(63,224,255,.35);--glowV:0 0 20px rgba(167,139,255,.26);--edg:inset 0 1px 0 rgba(255,255,255,.05);--sh1:0 2px 10px rgba(0,0,0,.45);--sh2:0 10px 30px rgba(0,0,0,.5);--sh3:0 20px 60px rgba(0,0,0,.65),0 0 30px rgba(63,224,255,.1);--r1:6px;--r2:10px;--r3:14px;--F:var(--zwork-preview-font-family,"Segoe UI Variable Text","Segoe UI",system-ui);--fd:"Segoe UI Variable Display","Segoe UI Variable Text","Segoe UI",system-ui;--fm:"Cascadia Code","Cascadia Mono","Consolas",monospace;--M:var(--zwork-preview-motion,1);--mo:calc(var(--M)*150ms);font-family:var(--F);font-size:14px;line-height:1.5;color:var(--fg);-webkit-font-smoothing:antialiased}
+  .nv.tl{--A:var(--zwork-preview-accent,#0779c9);--A2:#0a8fe0;--As:rgba(7,121,201,.1);--onA:#fff;--cy:#0784d8;--vi:#6a4fe0;--viS:rgba(106,79,224,.12);--mg:#bb3aa5;--bg0:#eef3fa;--bg1:#e9eff8;--bg2:#fff;--bg3:#fff;--glass:rgba(255,255,255,.74);--bgh:rgba(12,74,120,.05);--bd:#d6e1f1;--bd2:#b3c7e2;--fg:#0b1a2e;--fg2:#465c85;--fg3:#6d81a3;--ok:#0b8a60;--okS:rgba(11,138,96,.1);--okG:rgba(11,138,96,.4);--er:#cf3559;--erS:rgba(207,53,89,.1);--wn:#946200;--wnS:rgba(148,98,0,.1);--glow:0 0 14px rgba(7,121,201,.22);--glowS:0 0 8px rgba(7,121,201,.3);--glowV:0 0 14px rgba(106,79,224,.2);--edg:inset 0 1px 0 rgba(255,255,255,.8);--sh1:0 2px 8px rgba(23,52,94,.08);--sh2:0 12px 30px rgba(23,52,94,.12);--sh3:0 22px 60px rgba(23,52,94,.18)}
+  .nv,.nv *{box-sizing:border-box;margin:0;padding:0}
+  .nv h1,.nv h2,.nv h3{font-family:var(--fd);font-weight:600;letter-spacing:-.01em;line-height:1.25}
+  .nv h1{font-size:26px}.nv h2{font-size:17px}.nv h3{font-size:15px}
+  .nv .cap{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3)}
+  .nv .mut{color:var(--fg2)}.nv .dim{color:var(--fg3)}
+  .nv :focus-visible{outline:2px solid var(--A);outline-offset:2px}
+  .nv .ic{flex:none;vertical-align:-2.5px}
+  .nv button{font-family:var(--F);cursor:pointer;background:none;border:0;color:inherit}
+  .nv input,.nv select,.nv textarea{font-family:var(--F);color:var(--fg)}
+  .nv .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:34px;padding:0 16px;border-radius:var(--r1);border:1px solid transparent;font-size:13px;font-weight:600;letter-spacing:.02em;white-space:nowrap;transition:background var(--mo),border-color var(--mo),color var(--mo),opacity var(--mo)}
+  .nv .btn.pri{background:var(--A);color:var(--onA)}
+  .nv .btn.pri:hover{background:var(--A2)}
+  .nv .btn.sec{background:var(--bg3);border-color:var(--bd2)}
+  .nv .btn.sec:hover{border-color:var(--fg3)}
+  .nv .btn.gst{color:var(--fg2)}
+  .nv .btn.gst:hover{background:var(--bgh);color:var(--fg)}
+  .nv .btn.dst{color:var(--er);border-color:var(--er)}
+  .nv .btn.dst:hover{background:var(--erS)}
+  .nv .btn.sm{height:28px;padding:0 12px;font-size:12px}
+  .nv .btn.lg{height:40px;padding:0 22px;font-size:14px}
+  .nv .btn.dis,.nv .btn:disabled{opacity:.4;pointer-events:none}
+  .nv .ibt{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border-radius:var(--r1);color:var(--fg2);transition:background var(--mo),color var(--mo)}
+  .nv .ibt:hover{background:var(--bgh);color:var(--fg)}
+  .nv .ibt.dis{opacity:.35;pointer-events:none}
+  .nv .inp{height:34px;width:100%;padding:0 11px;border-radius:var(--r1);background:var(--bg3);border:1px solid var(--bd2);font-size:13px;transition:border-color var(--mo)}
+  .nv .inp::placeholder{color:var(--fg3)}
+  .nv .inp:hover{border-color:var(--fg3)}
+  .nv .inp:focus{border-color:var(--A);outline:none}
+  .nv .inp.bad{border-color:var(--er)}
+  .nv textarea.inp{height:auto;min-height:64px;padding:8px 11px;resize:vertical;line-height:1.45}
+  .nv .sel{height:34px;padding:0 30px 0 11px;border-radius:var(--r1);background:var(--bg3) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a8b2c3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center;border:1px solid var(--bd2);font-size:13px;appearance:none;-webkit-appearance:none;cursor:pointer}
+  .nv .sel:hover{border-color:var(--fg3)}
+  .nv .sel:disabled{opacity:.45;cursor:not-allowed}
+  .nv .fld{display:flex;flex-direction:column;gap:6px}
+  .nv .lbl{font-size:12px;font-weight:600;color:var(--fg2)}
+  .nv .hint{font-size:12px;color:var(--fg3)}
+  .nv .srch{position:relative}
+  .nv .srch .ic{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--fg3);pointer-events:none}
+  .nv .srch .inp{padding-left:32px}
+  .nv .tg{position:relative;flex:none;width:40px;height:20px;border-radius:99px;background:var(--bg3);border:1px solid var(--bd2);transition:background var(--mo),border-color var(--mo);cursor:pointer}
+  .nv .tg::after{content:"";position:absolute;top:50%;left:4px;width:12px;height:12px;border-radius:50%;background:var(--fg2);transform:translateY(-50%);transition:left var(--mo),background var(--mo)}
+  .nv .tg.on{background:var(--A);border-color:var(--A)}
+  .nv .tg.on::after{left:23px;background:var(--onA)}
+  .nv .tg.dis{opacity:.4;pointer-events:none}
+  .nv .ck{display:inline-flex;align-items:center;justify-content:center;flex:none;width:18px;height:18px;border-radius:4px;border:1.5px solid var(--bd2);background:var(--bg3);color:transparent;transition:background var(--mo),border-color var(--mo)}
+  .nv .ck:hover{border-color:var(--fg3)}
+  .nv .ck.on{background:var(--A);border-color:var(--A);color:var(--onA)}
+  .nv .ck .ic{width:11px;height:11px}
+  .nv .rng{appearance:none;-webkit-appearance:none;width:170px;height:4px;border-radius:99px;background:var(--bd2);cursor:pointer}
+  .nv .rng::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--A);border:3px solid var(--bg3);box-shadow:0 0 0 1px var(--bd2)}
+  .nv .rng:disabled{opacity:.45;cursor:not-allowed}
+  .nv .bdg{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 8px;border-radius:99px;font-size:11px;font-weight:600;letter-spacing:.02em;white-space:nowrap}
+  .nv .bdg .ic{width:12px;height:12px}
+  .nv .bdg.ok{color:var(--ok);background:var(--okS)}
+  .nv .bdg.er{color:var(--er);background:var(--erS)}
+  .nv .bdg.wn{color:var(--wn);background:var(--wnS)}
+  .nv .bdg.mut{color:var(--fg2);background:var(--bgh);box-shadow:inset 0 0 0 1px var(--bd)}
+  .nv .chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:6px;font-size:12px;color:var(--fg2);background:var(--bgh);white-space:nowrap}
+  .nv .chip .ic{width:13px;height:13px;color:var(--fg3)}
+  .nv .dot{flex:none;width:8px;height:8px;border-radius:50%}
+  .nv .dot.ok{background:var(--ok)}.nv .dot.wn{background:var(--wn)}.nv .dot.er{background:var(--er)}.nv .dot.mut{background:var(--fg3)}
+  .nv .lm{display:flex;align-items:flex-end;gap:3px;height:36px}
+  .nv .lm i{flex:1;border-radius:2px;background:var(--ok);opacity:.85}
+  .nv .emp{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:36px 24px;border:1px dashed var(--bd2);border-radius:var(--r2)}
+  .nv .emp .eic{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--bg3);color:var(--fg3);margin-bottom:8px}
+  .nv .bnr{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:var(--r1);font-size:13px;line-height:1.45}
+  .nv .bnr .ic{margin-top:2px}
+  .nv .bnr.wn{background:var(--wnS);color:var(--wn)}
+  @media (prefers-reduced-motion:reduce){.nv *{animation:none!important;transition:none!important}}
+  /* ═══ V2 · NEON GLASS & AMBIENT LAYER ═══ */
+  .nv{position:relative;overflow:hidden;background:var(--bg0)}
+  .nv>*:not(.fgbg){position:relative;z-index:1}
+  .nv .fgbg{position:absolute;inset:0;z-index:0;pointer-events:none;background:radial-gradient(560px 340px at 12% -6%,rgba(63,224,255,.14),transparent 62%),radial-gradient(620px 420px at 90% 110%,rgba(167,139,255,.13),transparent 60%),linear-gradient(180deg,#04060d,#05070f 55%,#04060d)}
+  .nv .fgbg::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(141,238,255,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(141,238,255,.055) 1px,transparent 1px);background-size:54px 54px;-webkit-mask-image:radial-gradient(92% 84% at 50% 38%,#000 28%,transparent 100%);mask-image:radial-gradient(92% 84% at 50% 38%,#000 28%,transparent 100%)}
+  .nv .fgbg::after{content:'';position:absolute;inset:0;background-image:radial-gradient(circle at 14% 24%,rgba(141,238,255,.65) 0 1.3px,transparent 2.2px),radial-gradient(circle at 76% 18%,rgba(167,139,255,.6) 0 1.1px,transparent 2px),radial-gradient(circle at 62% 66%,rgba(141,238,255,.45) 0 1px,transparent 2px),radial-gradient(circle at 28% 82%,rgba(167,139,255,.5) 0 1.2px,transparent 2.1px),radial-gradient(circle at 88% 58%,rgba(141,238,255,.5) 0 1px,transparent 2px),radial-gradient(circle at 40% 36%,rgba(255,106,213,.4) 0 1px,transparent 2px)}
+  .nv.tl .fgbg{background:radial-gradient(560px 340px at 12% -6%,rgba(7,121,201,.1),transparent 62%),radial-gradient(620px 420px at 90% 110%,rgba(106,79,224,.1),transparent 60%),linear-gradient(180deg,#f0f5fb,#eef3fa 55%,#f0f5fb)}
+  .nv.tl .fgbg::before{background-image:linear-gradient(rgba(11,90,140,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(11,90,140,.06) 1px,transparent 1px)}
+  .nv .emb{position:relative;display:grid;place-items:center;flex:none}
+  .nv .emb i{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(63,224,255,.28)}
+  .nv .emb i:nth-child(2){inset:14%;border-style:dashed;border-color:rgba(167,139,255,.55);animation:nvspin calc(16s/var(--M)) linear infinite}
+  .nv .emb i:nth-child(3){inset:30%;border-color:rgba(63,224,255,.6);animation:nvspin calc(9s/var(--M)) linear infinite reverse}
+  .nv .emb b{width:30%;height:30%;border-radius:50%;background:radial-gradient(circle at 35% 30%,#d9f8ff,#3fe0ff 55%,#1e7fb8);box-shadow:0 0 12px rgba(63,224,255,.7)}
+  .nv .emb::after{content:'';position:absolute;inset:-16%;border-radius:50%;box-shadow:0 0 20px rgba(63,224,255,.22),inset 0 0 16px rgba(63,224,255,.12);animation:nvbreath calc(4.6s/var(--M)) ease-in-out infinite}
+  .nv.tl .emb i{border-color:rgba(7,121,201,.35)}
+  .nv.tl .emb i:nth-child(2){border-color:rgba(106,79,224,.5)}
+  .nv .glass,.nv .card,.nv .ar,.nv .tk,.nv .dlg,.nv .tst,.nv .tray,.nv .obc{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0) 46%),var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-color:var(--bd);box-shadow:var(--sh1),var(--edg)}
+  .nv.tl .glass,.nv.tl .card,.nv.tl .ar,.nv.tl .tk,.nv.tl .dlg,.nv.tl .tst,.nv.tl .tray,.nv.tl .obc{background:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,0) 46%),var(--glass);box-shadow:var(--sh1),var(--edg)}
+  .nv .main{background:transparent}
+  .nv .side{background:linear-gradient(180deg,rgba(9,15,28,.75),rgba(6,10,20,.8));backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+  .nv .tbar{background:rgba(7,11,21,.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+  .nv.tl .side{background:linear-gradient(180deg,rgba(255,255,255,.8),rgba(244,248,255,.86))}
+  .nv.tl .tbar{background:rgba(255,255,255,.8)}
+  .nv .btn.pri{box-shadow:0 0 16px rgba(63,224,255,.3),inset 0 1px 0 rgba(255,255,255,.25)}
+  .nv .btn.pri:hover{background:var(--A2);box-shadow:0 0 24px rgba(63,224,255,.45),inset 0 1px 0 rgba(255,255,255,.3)}
+  .nv .btn.sec:hover{border-color:var(--cy);box-shadow:var(--glowS)}
+  .nv .ibt:hover{background:var(--bgh);color:var(--cy)}
+  .nv .tg.on{box-shadow:0 0 12px rgba(63,224,255,.45)}
+  .nv .fchip.on{background:linear-gradient(180deg,rgba(63,224,255,.2),rgba(63,224,255,.07));border-color:rgba(63,224,255,.55);color:var(--fg);box-shadow:inset 0 0 14px rgba(63,224,255,.14)}
+  .nv .ni.on .ic,.nv .sni.on .ic{color:var(--cy)}
+  .nv .ni.on{box-shadow:inset 2.5px 0 0 var(--cy),0 0 18px rgba(63,224,255,.1)}
+  .nv .sni.on{box-shadow:inset 2.5px 0 0 var(--cy);color:var(--fg)}
+  .nv .chip.pr-h{color:#ff9edb;background:rgba(255,106,213,.14)}
+  .nv .chip.pr-h .ic{color:#ff9edb}
+  .nv .chip.pr-m{color:var(--cy);background:rgba(63,224,255,.12)}
+  .nv .chip.pr-m .ic{color:var(--cy)}
+  .nv .lm i{box-shadow:0 0 8px rgba(75,234,175,.5)}
+  .nv .obp i.on{background:linear-gradient(90deg,var(--cy),var(--vi));box-shadow:0 0 12px rgba(63,224,255,.5)}
+  .nv .ar{position:relative}
+  .nv .ar::before{content:'';position:absolute;left:36px;top:40px;bottom:-11px;width:1px;background:linear-gradient(180deg,rgba(63,224,255,.3),rgba(63,224,255,0));pointer-events:none}
+  .nv .ar:last-child::before{display:none}
+  @keyframes nvbreath{50%{opacity:.5;transform:scale(.93)}}
+  /* shell & pages */
+  .nv .app{display:flex;flex-direction:column;height:100%}
+  .nv .tbar{flex:none;height:38px;display:flex;align-items:center;justify-content:space-between;padding:0 8px 0 14px;background:var(--bg1);border-bottom:1px solid var(--bd);font-size:12px;font-weight:600;color:var(--fg2)}
+  .nv .tbar .tl{display:flex;align-items:center;gap:8px}
+  .nv .wc{display:flex}
+  .nv .wc .ibt{width:44px;height:37px;border-radius:0}
+  .nv .wc .ibt.cls:hover{background:#c42b2b;color:#fff}
+  .nv .win{flex:1;display:flex;min-height:0}
+  .nv .side{flex:none;width:216px;display:flex;flex-direction:column;gap:4px;padding:10px;background:var(--bg1);border-right:1px solid var(--bd)}
+  .nv .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 14px}
+  .nv .orb{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--As);color:var(--A);flex:none}
+  .nv .brand .bn{font-size:14px;font-weight:600}
+  .nv .brand .bs{font-size:11px;color:var(--fg3)}
+  .nv .ni{display:flex;align-items:center;gap:11px;width:100%;height:36px;padding:0 10px;border-radius:var(--r1);font-size:13px;font-weight:600;color:var(--fg2);transition:background var(--mo),color var(--mo)}
+  .nv .ni:hover{background:var(--bgh);color:var(--fg)}
+  .nv .ni.on{background:var(--bgh);color:var(--fg);box-shadow:inset 2.5px 0 0 var(--A)}
+  .nv .sfoot{margin-top:auto;display:flex;flex-direction:column;gap:10px;padding:8px}
+  .nv .statp{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--bd);border-radius:var(--r1);font-size:12px;color:var(--fg2);background:var(--bg2)}
+  .nv .main{flex:1;min-width:0;overflow:auto;padding:24px 28px;background:var(--bg0)}
+  .nv .row{display:flex;align-items:center;gap:10px}
+  .nv .grow{flex:1;min-width:0}
+  .nv .grid2{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}
+  .nv .ph{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px}
+  .nv .ph p{margin-top:3px;font-size:13px}
+  .nv .card{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r2);box-shadow:var(--sh1);margin-bottom:16px}
+  .nv .chd{display:flex;align-items:center;gap:10px;padding:14px 16px}
+  .nv .cbd{padding:0 16px 16px;display:flex;flex-direction:column;gap:10px}
+  .nv .kv{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--bd)}
+  .nv .kv:last-child{border-bottom:0}
+  .nv .kv .k{color:var(--fg2)}
+  .nv .kv .v{display:flex;align-items:center;gap:6px;font-weight:600}
+  .nv .more{font-size:12.5px;font-weight:600;color:var(--fg2);background:none;padding:4px 2px}
+  .nv .more:hover{color:var(--fg)}
+  /* tasks */
+  .nv .tlst{display:flex;flex-direction:column;gap:8px}
+  .nv .tk{display:flex;align-items:center;gap:12px;padding:9px 14px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;transition:border-color var(--mo)}
+  .nv .tk:hover{border-color:var(--bd2)}
+  .nv .tk .tt{flex:1;min-width:0;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nv .tk.done .tt{color:var(--fg3);font-weight:400;text-decoration:line-through}
+  .nv .tk .acts{display:flex;gap:2px;opacity:0;transition:opacity var(--mo)}
+  .nv .tk:hover .acts,.nv .tk:focus-within .acts,.nv .tk.done .acts{opacity:1}
+  .nv .chip.od{color:var(--er);background:var(--erS)}
+  .nv .chip.od .ic{color:var(--er)}
+  .nv .tools{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+  .nv .tools .srch{width:230px}
+  .nv .fchips{display:flex;gap:6px}
+  .nv .fchip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:99px;border:1px solid var(--bd2);background:var(--bg2);font-size:12.5px;font-weight:600;color:var(--fg2);cursor:pointer;transition:background var(--mo),color var(--mo),border-color var(--mo)}
+  .nv .fchip:hover{color:var(--fg)}
+  .nv .fchip.on{background:var(--fg);color:var(--bg0);border-color:var(--fg)}
+  .nv .fchip .n{font-size:11px;opacity:.65}
+  /* activity */
+  .nv .ar{border:1px solid var(--bd);border-radius:var(--r2);background:var(--bg2);margin-bottom:10px;overflow:hidden}
+  .nv .arh{display:flex;align-items:center;gap:12px;width:100%;padding:11px 14px;text-align:left;transition:background var(--mo)}
+  .nv .arh:hover{background:var(--bgh)}
+  .nv .arh .tm{flex:none;width:46px;font-size:11.5px;color:var(--fg3)}
+  .nv .arh .q{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nv .arh .cki{color:var(--fg3);transition:transform var(--mo)}
+  .nv .ar.open .cki{transform:rotate(180deg)}
+  .nv .arb{display:none;padding:2px 14px 14px 72px;flex-direction:column;gap:8px}
+  .nv .ar.open .arb{display:flex}
+  .nv .dgrid{display:grid;grid-template-columns:92px 1fr;gap:6px 14px;font-size:12.5px}
+  .nv .dgrid .dk{color:var(--fg3);font-weight:600}
+  /* settings */
+  .nv .set{display:grid;grid-template-columns:196px 1fr;gap:20px;align-items:start}
+  .nv .snav{display:flex;flex-direction:column;gap:2px}
+  .nv .sni{display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:var(--r1);font-size:13px;font-weight:600;color:var(--fg2);text-align:left;transition:background var(--mo),color var(--mo)}
+  .nv .sni:hover{background:var(--bgh);color:var(--fg)}
+  .nv .sni.on{background:var(--bgh);color:var(--fg);box-shadow:inset 2.5px 0 0 var(--A)}
+  .nv .srow{display:flex;align-items:center;gap:18px;padding:14px 16px;border-bottom:1px solid var(--bd)}
+  .nv .srow:last-child{border-bottom:0}
+  .nv .srow .st{flex:1;min-width:0}
+  .nv .stt{font-size:13.5px;font-weight:600}
+  .nv .std{font-size:12.5px;color:var(--fg2);margin-top:2px;line-height:1.45}
+  .nv .stag{display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:4px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:var(--bgh);color:var(--fg3);margin-left:8px}
+  /* inline pieces (overlay-inspired, used across screens) */
+  .nv .qbox{padding:9px 12px;border-left:2px solid var(--bd2);background:var(--bgh);border-radius:0 6px 6px 0;font-size:13px}
+  .nv .cic{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;flex:none}
+  .nv .cic.ok{background:var(--okS);color:var(--ok)}
+  .nv .cic.er{background:var(--erS);color:var(--er)}
+  .nv .cic.wn{background:var(--wnS);color:var(--wn)}
+  .nv .conf{border:1px solid var(--bd2);border-radius:var(--r1);padding:10px 12px;background:var(--bg3)}
+  .nv .conf .ct{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);margin-bottom:6px}
+  /* system tray (onboarding summary) */
+  .nv .tray{width:296px;border-radius:8px;background:rgba(26,33,45,.95);border:1px solid var(--bd2);box-shadow:var(--sh3);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);padding:6px}
+  .nv.tl .tray{background:rgba(252,252,253,.97)}
+  .nv .trh{display:flex;align-items:center;gap:10px;padding:10px 10px 8px}
+  .nv .ti{display:flex;align-items:center;gap:12px;width:100%;height:38px;padding:0 10px;border-radius:6px;font-size:13px;color:var(--fg);text-align:left;transition:background var(--mo)}
+  .nv .ti:hover{background:var(--bgh)}
+  .nv .ti .ic{color:var(--fg2)}
+  .nv .tsep{height:1px;background:var(--bd);margin:5px 8px}
+  /* onboarding */
+  .nv .obwrap{height:100%;display:grid;place-items:center;background:var(--bg0)}
+  .nv .obc{width:600px;border-radius:14px;background:var(--bg2);border:1px solid var(--bd);box-shadow:var(--sh3);overflow:hidden}
+  .nv .obp{display:flex;gap:6px;padding:20px 28px 0}
+  .nv .obp i{flex:1;height:3px;border-radius:2px;background:var(--bd2)}
+  .nv .obp i.on{background:var(--A)}
+  .nv .obstep{padding:8px 28px 0;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--fg3)}
+  .nv .obb{padding:20px 28px 8px;min-height:238px;display:flex;flex-direction:column;gap:12px}
+  .nv .obf{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 28px 20px;border-top:1px solid var(--bd)}
+  .nv .obfeat{display:flex;gap:12px;align-items:flex-start;padding:11px 12px;border:1px solid var(--bd);border-radius:var(--r1)}
+  .nv .obfeat .ic{color:var(--fg2);margin-top:2px}
+  .nv .obfeat .ft{font-size:13px;font-weight:600}
+  .nv .obfeat .fd{font-size:12.5px;color:var(--fg2);margin-top:1px;line-height:1.45}
+  /* dialogs & toasts */
+  .nv .dlg{width:420px;border-radius:var(--r3);background:var(--bg3);border:1px solid var(--bd2);box-shadow:var(--sh3);padding:20px}
+  .nv .dlg h3{display:flex;align-items:center;gap:10px;font-size:16px}
+  .nv .dlg h3 .ic{color:var(--fg2)}
+  .nv .dlg h3 .ic.er{color:var(--er)}
+  .nv .dlg h3 .ic.wn{color:var(--wn)}
+  .nv .dlg p{margin-top:8px;font-size:13px;color:var(--fg2);line-height:1.55}
+  .nv .dlg .dacts{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+  .nv .tst{display:flex;gap:10px;align-items:flex-start;width:330px;padding:12px 14px;border-radius:var(--r2);background:var(--bg3);border:1px solid var(--bd2);box-shadow:var(--sh2)}
+  .nv .tst .tt{font-size:13px;font-weight:600}
+  .nv .tst .ts{font-size:12.5px;color:var(--fg2);margin-top:1px;line-height:1.4}
+  .nv .tst .ic.ok{color:var(--ok)}.nv .tst .ic.wn{color:var(--wn)}.nv .tst .ic.er{color:var(--er)}
+  .nv .gal{display:grid;grid-template-columns:repeat(3,420px);gap:24px;align-items:start}
+  .nv .gal .dlg{box-shadow:var(--sh1)}
+  .nv .tcol{display:flex;flex-direction:column;gap:10px}
+  .nv .emptywrap{min-height:420px;display:grid;place-items:center}
+</style>
+</head>
+<body>
+
+<svg style="display:none" aria-hidden="true"><defs>
+<symbol id="i-nova" viewBox="0 0 24 24"><circle cx="11" cy="12" r="3.8"/><path d="M16.1 7.4a6.9 6.9 0 0 1 0 9.2M19.5 4.9a10.9 10.9 0 0 1 0 14.2"/><circle cx="11" cy="12" r="1.3" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-home" viewBox="0 0 16 16"><path d="M2.5 7.2 8 2.6l5.5 4.6V13a.7.7 0 0 1-.7.7H3.2a.7.7 0 0 1-.7-.7Z"/><path d="M5.7 13.7V9.3h4.6v4.4"/></symbol>
+<symbol id="i-tasks" viewBox="0 0 16 16"><path d="m2.5 4.3 1.4 1.4L6.1 3.4M2.5 9.6 3.9 11l2.2-2.3M9 4.7h4.5M9 10h4.5"/></symbol>
+<symbol id="i-clock" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.6"/><path d="M8 5.1V8l2 1.4"/></symbol>
+<symbol id="i-set" viewBox="0 0 16 16"><path d="M2.5 4.7h6.3M12.2 4.7h1.3M2.5 8h1.3M7.2 8h6.3M2.5 11.3h4.3M10.2 11.3h3.3"/><circle cx="10.5" cy="4.7" r="1.7"/><circle cx="5.5" cy="8" r="1.7"/><circle cx="8.5" cy="11.3" r="1.7"/></symbol>
+<symbol id="i-mic" viewBox="0 0 16 16"><rect x="6" y="1.8" width="4" height="7.4" rx="2"/><path d="M3.6 7.4a4.4 4.4 0 0 0 8.8 0M8 11.8v2.4M5.8 14.2h4.4"/></symbol>
+<symbol id="i-micoff" viewBox="0 0 16 16"><rect x="6" y="1.8" width="4" height="7.4" rx="2"/><path d="M3.6 7.4a4.4 4.4 0 0 0 8.8 0M8 11.8v2.4M5.8 14.2h4.4M2.5 2.5l11 11"/></symbol>
+<symbol id="i-search" viewBox="0 0 16 16"><circle cx="6.9" cy="6.9" r="4.4"/><path d="m10.2 10.2 3.3 3.3"/></symbol>
+<symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></symbol>
+<symbol id="i-x" viewBox="0 0 16 16"><path d="m4 4 8 8M12 4l-8 8"/></symbol>
+<symbol id="i-check" viewBox="0 0 16 16"><path d="m3.2 8.4 3.3 3.3 6.3-6.8"/></symbol>
+<symbol id="i-ckd" viewBox="0 0 16 16"><path d="m4.5 6.2 3.5 3.6 3.5-3.6"/></symbol>
+<symbol id="i-ckr" viewBox="0 0 16 16"><path d="m6.2 4 3.6 4-3.6 4"/></symbol>
+<symbol id="i-trash" viewBox="0 0 16 16"><path d="M3 4.6h10M6.4 4.6V3.3c0-.4.4-.8.8-.8h1.6c.4 0 .8.4.8.8v1.3M4.6 4.6l.5 8.2c0 .4.4.7.8.7h4.2c.4 0 .8-.3.8-.7l.5-8.2M6.7 7.2v3.9M9.3 7.2v3.9"/></symbol>
+<symbol id="i-pen" viewBox="0 0 16 16"><path d="M11.1 2.7 13.3 4.9 5.1 13.1l-2.9.7.7-2.9ZM9.6 4.2l2.2 2.2"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 16 16"><path d="M13.6 6.7A5.9 5.9 0 1 0 14 9.3"/><path d="M13.9 2.9v3.8h-3.8"/></symbol>
+<symbol id="i-alert" viewBox="0 0 16 16"><path d="M8 2.6 14.5 13.4H1.5ZM8 6.6v3M8 11.4v.2"/></symbol>
+<symbol id="i-info" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.8"/><path d="M8 7.4v3.4M8 5v.2"/></symbol>
+<symbol id="i-folder" viewBox="0 0 16 16"><path d="M2.2 12.6V4.4c0-.5.4-.9.9-.9h3.2l1.5 1.9h5.1c.5 0 .9.4.9.9v6.3c0 .5-.4.9-.9.9H3.1a.9.9 0 0 1-.9-.9Z"/></symbol>
+<symbol id="i-cal" viewBox="0 0 16 16"><rect x="2.4" y="3.4" width="11.2" height="10.4" rx="1.4"/><path d="M5.2 2.2v2.4M10.8 2.2v2.4M2.4 6.8h11.2"/></symbol>
+<symbol id="i-flag" viewBox="0 0 16 16"><path d="M4 13.8V2.6M4 3.4h8.2l-2.1 2.7 2.1 2.7H4"/></symbol>
+<symbol id="i-shield" viewBox="0 0 16 16"><path d="M8 1.9 13 3.9v4.3c0 3-2 5-5 6.1-3-1.1-5-3.1-5-6.1V3.9Z"/><path d="m6.1 8 1.4 1.4 2.6-2.7"/></symbol>
+<symbol id="i-exp" viewBox="0 0 16 16"><path d="M9.3 2.5h4.2v4.2M2.5 9.3v4.2h4.2M13.5 2.5 9.6 6.4M2.5 13.5l3.9-3.9"/></symbol>
+<symbol id="i-power" viewBox="0 0 16 16"><path d="M8 2.3v5.2M4.4 4.3a5.1 5.1 0 1 0 7.2 0"/></symbol>
+<symbol id="i-pause" viewBox="0 0 16 16"><path d="M6 3.4v9.2M10 3.4v9.2"/></symbol>
+<symbol id="i-spark" viewBox="0 0 16 16"><path d="M8 2.2 9.2 6.8 13.8 8 9.2 9.2 8 13.8 6.8 9.2 2.2 8 6.8 6.8Z"/></symbol>
+<symbol id="i-cloud" viewBox="0 0 16 16"><path d="M4.5 11.6a2.9 2.9 0 0 1 .3-5.7 4 4 0 0 1 7.6 1 2.4 2.4 0 0 1-.4 4.7Z"/></symbol>
+<symbol id="i-cpu" viewBox="0 0 16 16"><rect x="4.4" y="4.4" width="7.2" height="7.2" rx="1.2"/><path d="M8 1.8v2.6M8 11.6v2.6M1.8 8h2.6M11.6 8h2.6"/></symbol>
+<symbol id="i-min" viewBox="0 0 16 16"><path d="M3.5 8h9"/></symbol>
+<symbol id="i-max" viewBox="0 0 16 16"><rect x="3.4" y="3.4" width="9.2" height="9.2" rx="1"/></symbol>
+</defs></svg>
+
+<div class="canvas-viewport" id="viewport">
+  <div class="canvas-world" id="world"></div>
+</div>
+
+<div class="zoom-controls">
+  <button class="zoom-btn" id="zoomOut" aria-label="">&#8722;</button>
+  <div class="zoom-label" id="zoomLabel">100%</div>
+  <button class="zoom-btn" id="zoomIn" aria-label="">+</button>
+  <button class="zoom-btn" id="zoomReset" title="" aria-label="">&#8962;</button>
+</div>
+
+<div class="coord-indicator" id="coordIndicator">0, 0</div>
+
+<div class="kbd-hint" id="kbdHint"></div>
+
+<script>
+(() => {
+  const UI_STRINGS = {
+    docTitle: 'Nova — App Screens · Design Canvas V1',
+    zoom: { zoomIn: 'Zoom in', zoomOut: 'Zoom out', reset: 'Reset view' },
+    kbdHints: [['Scroll','pan'],['Ctrl+Scroll','zoom'],['Ctrl+Z','undo'],['Drag','rearrange']]
+  };
+  document.title = UI_STRINGS.docTitle;
+  document.getElementById('zoomIn').setAttribute('aria-label', UI_STRINGS.zoom.zoomIn);
+  document.getElementById('zoomOut').setAttribute('aria-label', UI_STRINGS.zoom.zoomOut);
+  document.getElementById('zoomReset').setAttribute('aria-label', UI_STRINGS.zoom.reset);
+  document.getElementById('zoomReset').title = UI_STRINGS.zoom.reset;
+  document.getElementById('kbdHint').innerHTML = UI_STRINGS.kbdHints.map(([k,a])=>`<span><kbd>${k}</kbd> ${a}</span>`).join('');
+
+  const viewport = document.getElementById('viewport'), world = document.getElementById('world'), zoomLabel = document.getElementById('zoomLabel'), coordIndicator = document.getElementById('coordIndicator');
+  let panX = 0, panY = 0, zoom = 1; const MIN_ZOOM = .05, MAX_ZOOM = 8;
+
+  function updateTransform() { world.style.transform = `translate(${panX}px,${panY}px) scale(${zoom})`; zoomLabel.textContent = Math.round(zoom*100)+'%'; updateGrid(); }
+  function updateGrid() { const g = 40*zoom; viewport.style.backgroundImage = `radial-gradient(circle, var(--grid-color) 0.8px, transparent 0.8px)`; viewport.style.backgroundSize = `${g}px ${g}px`; viewport.style.backgroundPosition = `${panX%g}px ${panY%g}px`; }
+
+  let isPanning = false, panSX, panSY;
+  viewport.addEventListener('pointerdown', e => { if (e.target === viewport || e.target === world) { isPanning = true; panSX = e.clientX - panX; panSY = e.clientY - panY; viewport.classList.add('panning'); viewport.setPointerCapture(e.pointerId); e.preventDefault(); } });
+  viewport.addEventListener('pointermove', e => {
+    if (isPanning) { panX = e.clientX - panSX; panY = e.clientY - panSY; updateTransform(); }
+    const r = viewport.getBoundingClientRect();
+    coordIndicator.textContent = `${Math.round((e.clientX-r.left-panX)/zoom)}, ${Math.round((e.clientY-r.top-panY)/zoom)}`;
+  });
+  viewport.addEventListener('pointerup', () => { isPanning = false; viewport.classList.remove('panning'); });
+
+  viewport.addEventListener('wheel', e => {
+    e.preventDefault(); const rect = viewport.getBoundingClientRect();
+    const hasX = Math.abs(e.deltaX) > .5;
+    if (e.ctrlKey || e.metaKey || !hasX) {
+      const mx = e.clientX-rect.left, my = e.clientY-rect.top, wx = (mx-panX)/zoom, wy = (my-panY)/zoom;
+      const f = e.deltaY > 0 ? .95 : 1.05;
+      zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom*f)); panX = mx-wx*zoom; panY = my-wy*zoom;
+    } else { panX -= e.deltaX; panY -= e.deltaY; }
+    updateTransform();
+  }, { passive: false });
+
+  function zoomAt(f) { const r = viewport.getBoundingClientRect(), cx = r.width/2, cy = r.height/2, wx = (cx-panX)/zoom, wy = (cy-panY)/zoom; zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom*f)); panX = cx-wx*zoom; panY = cy-wy*zoom; updateTransform(); }
+  document.getElementById('zoomIn').onclick = () => zoomAt(1.25);
+  document.getElementById('zoomOut').onclick = () => zoomAt(.8);
+  document.getElementById('zoomReset').onclick = () => { zoom = 1; panX = 0; panY = 0; updateTransform(); };
+
+  const undoStack = [];
+  function saveUndo() { const s = []; world.querySelectorAll('.canvas-el').forEach(el => s.push({ id: el.id, left: el.style.left, top: el.style.top })); undoStack.push({ panX, panY, zoom, assets: s }); if (undoStack.length > 60) undoStack.shift(); }
+  function undo() { if (!undoStack.length) return; const st = undoStack.pop(); panX = st.panX; panY = st.panY; zoom = st.zoom; st.assets.forEach(a => { const el = document.getElementById(a.id); if (el) { el.style.left = a.left; el.style.top = a.top; } }); updateTransform(); }
+  document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); } });
+
+  function makeDraggable(el) {
+    let d = false, sx, sy, ox, oy;
+    el.addEventListener('pointerdown', e => { if (e.button !== 0) return; d = true; el.classList.add('dragging'); saveUndo(); sx = e.clientX; sy = e.clientY; ox = parseFloat(el.style.left); oy = parseFloat(el.style.top); el.setPointerCapture(e.pointerId); e.stopPropagation(); });
+    el.addEventListener('pointermove', e => { if (!d) return; el.style.left = (ox+(e.clientX-sx)/zoom)+'px'; el.style.top = (oy+(e.clientY-sy)/zoom)+'px'; });
+    el.addEventListener('pointerup', () => { if (d) { d = false; el.classList.remove('dragging'); } });
+  }
+
+  let _id = 0; const uid = p => (p||'el')+'-'+(++_id);
+
+  function addSection(rowY, label) {
+    const parts = label.split(' '), num = parts[0] || '', rest = parts.slice(1).join(' ');
+    const el = document.createElement('div'); el.className = 'section-header'; el.style.left = '60px'; el.style.top = rowY + 'px';
+    el.innerHTML = `<span class="section-line"></span><span class="section-num">${num}</span><span class="section-label">${rest}</span>`;
+    world.appendChild(el); return rowY;
+  }
+  function addTitle(x, y, text, options = {}) {
+    const el = document.createElement('div'); el.className = 'canvas-title'; el.id = uid('title'); el.style.left = x+'px'; el.style.top = y+'px'; el.style.fontSize = (options.fontSize||48)+'px';
+    if (options.fontWeight) el.style.fontWeight = options.fontWeight; if (options.color) el.style.color = options.color; if (options.maxWidth) el.style.maxWidth = options.maxWidth+'px';
+    el.textContent = text; world.appendChild(el); return el;
+  }
+  function addText(x, y, text, options = {}) {
+    const el = document.createElement('div'); el.className = 'canvas-text canvas-el'; el.id = uid('text'); el.style.left = x+'px'; el.style.top = y+'px'; el.style.fontSize = (options.fontSize||14)+'px';
+    if (options.color) el.style.color = options.color; if (options.maxWidth) el.style.maxWidth = options.maxWidth+'px';
+    el.textContent = text; world.appendChild(el); makeDraggable(el); return el;
+  }
+  function addTag(x, y, label, options = {}) {
+    const el = document.createElement('div'); el.className = 'canvas-el'; el.id = uid('tag'); el.style.left = x+'px'; el.style.top = y+'px';
+    el.innerHTML = `<div class="canvas-tag"><span class="tag-dot" style="background:${options.color||'var(--accent)'}"></span>${label}</div>`;
+    world.appendChild(el); makeDraggable(el); return el;
+  }
+  function addContextCard(x, y, w, title, content) {
+    const el = document.createElement('div'); el.className = 'canvas-el'; el.id = uid('ctx'); el.style.left = x+'px'; el.style.top = y+'px'; el.style.width = w+'px';
+    el.innerHTML = `<div class="context-card" style="width:100%"><div class="card-head"><div class="head-indicator"></div><h3>${title}</h3></div><div class="card-content">${content}</div></div>`;
+    world.appendChild(el); makeDraggable(el); return el;
+  }
+  function addDesignSystemCard(x, y, w, title, bodyHTML) {
+    const el = document.createElement('div'); el.className = 'canvas-el'; el.id = uid('ds'); el.style.left = x+'px'; el.style.top = y+'px'; el.style.width = w+'px';
+    el.innerHTML = `<div class="ds-card" style="width:100%"><div class="ds-head">${title}</div><div class="ds-body">${bodyHTML}</div></div>`;
+    world.appendChild(el); makeDraggable(el); return el;
+  }
+  let _pageNum = 0;
+  function addPage(x, y, w, h, label, htmlContent) {
+    _pageNum++;
+    const el = document.createElement('div'); el.className = 'canvas-el'; el.id = uid('page'); el.style.left = x+'px'; el.style.top = y+'px'; el.style.width = w+'px'; el.style.height = (h+40)+'px';
+    el.innerHTML = `<div class="design-page" style="width:${w}px;height:${h}px"><div class="page-content">${htmlContent}</div></div><div class="page-label"><span class="label-num">${String(_pageNum).padStart(2,'0')}</span>${label}</div>`;
+    world.appendChild(el); makeDraggable(el); return el;
+  }
+  function addNote(x, y, tag, text) {
+    const el = document.createElement('div'); el.className = 'canvas-el'; el.id = uid('note'); el.style.left = x+'px'; el.style.top = y+'px';
+    el.innerHTML = `<div class="canvas-note"><div class="note-tag">${tag}</div><div class="note-body">${text}</div></div>`;
+    world.appendChild(el); makeDraggable(el); return el;
+  }
+  function addDiagram(x, y, w, h, htmlContent) {
+    const el = document.createElement('div'); el.className = 'canvas-el'; el.id = uid('diagram'); el.style.left = x+'px'; el.style.top = y+'px'; el.style.width = w+'px'; el.style.height = h+'px';
+    el.innerHTML = `<div class="canvas-diagram" style="width:100%;height:100%"><div class="diagram-content">${htmlContent}</div></div>`;
+    world.appendChild(el); makeDraggable(el); return el;
+  }
+  function below(el, gap) { return parseFloat(el.style.top) + el.offsetHeight + (gap===undefined?20:gap); }
+  function rightOf(el, gap) { return parseFloat(el.style.left) + el.offsetWidth + (gap===undefined?20:gap); }
+  function maxY(els, gap) { return Math.max(...els.map(e => parseFloat(e.style.top)+e.offsetHeight)) + (gap===undefined?20:gap); }
+  window.canvas = { addSection, addTitle, addText, addTag, addContextCard, addDesignSystemCard, addPage, addNote, addDiagram, below, rightOf, maxY };
+
+  /* ═══════════ NOVA APP-SCREENS SCENE ═══════════ */
+  const I=(n,s=16,c='')=>`<svg class="ic${c?' '+c:''}" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+  const embCls=s=>({listening:'lis',processing:'pro',success:'ok',error:'er'})[s]||'';
+  const ORB=(s=30,cls='')=>`<span class="emb${cls?' '+cls:''}" style="width:${s}px;height:${s}px" aria-hidden="true"><i></i><i></i><i></i><b></b></span>`;
+  const page=(x,y,w,h,label,inner,tl)=>addPage(x,y,w,h,label,`<div class="nv${tl?' tl':''}" style="width:${w}px;height:${h}px"><div class="fgbg" aria-hidden="true"></div>${inner}</div>`);
+  const NI=(ic,nm,on)=>`<button class="ni${on?' on':''}" aria-current="${on?'page':'false'}">${I(ic)}<span>${nm}</span></button>`;
+  const side=on=>`<aside class="side"><div class="brand">${ORB()}<div><div class="bn">Nova</div><div class="bs">Voice assistant</div></div></div><nav style="display:contents">${NI('home','Home',on==='home')}${NI('tasks','Tasks',on==='tasks')}${NI('clock','Activity',on==='activity')}${NI('set','Settings',on==='settings')}</nav><div class="sfoot"><div class="statp"><span class="dot ok" aria-hidden="true"></span>Listening for “Hey Nova”</div><div class="dim" style="font-size:11px;padding:0 2px">Nova 1.4.2 · lives in the tray</div></div></aside>`;
+  const shell=(on,body)=>`<div class="app"><div class="tbar"><div class="tl">${I('nova',16)} Nova</div><div class="wc"><span class="ibt">${I('min')}</span><span class="ibt">${I('max')}</span><span class="ibt cls">${I('x')}</span></div></div><div class="win">${side(on)}<main class="main">${body}</main></div></div>`;
+
+  const tkRow=t=>`<div class="tk${t.d?' done':''}"><span class="ck${t.d?' on':''}" role="checkbox" aria-checked="${!!t.d}" aria-label="${t.t}" tabindex="0">${t.d?I('check'):''}</span><span class="tt">${t.t}</span>${t.v?`<span class="chip" title="Created by voice">${I('mic')}</span>`:''}<span class="chip${t.od?' od':''}">${I(t.d?'check':'cal')}${t.due}</span><span class="chip ${t.p==='High'?'pr-h':t.p==='Medium'?'pr-m':''}">${I('flag')}${t.p}</span><span class="chip">${t.c}</span><span class="acts"><span class="ibt" aria-label="Edit task">${I('pen')}</span><span class="ibt" aria-label="Delete task">${I('trash')}</span></span></div>`;
+  const TASKS=[{t:'Finish DBMS assignment',due:'Today 6:00 PM',p:'High',c:'College',v:1},{t:'Revise operating systems notes',due:'Tomorrow',p:'Medium',c:'College'},{t:'Prepare for technical interview',due:'Fri, Oct 16',p:'High',c:'Career'},{t:'Book dentist appointment',due:'Yesterday',p:'Low',c:'Personal',od:1},{t:'Pay electricity bill',due:'Done · 10:02 AM',p:'Medium',c:'Personal',v:1,d:1},{t:'Return library books',due:'Done · yesterday',p:'Low',c:'Errands',d:1}];
+
+  const homeS=()=>shell('home',`<div class="ph"><div><h1>Good afternoon</h1><p class="mut">1 task due today · 1 overdue · Nova is listening in the background</p></div><button class="btn sec">${I('exp')}Show floating assistant</button></div><div class="grid2"><section class="card" style="margin:0"><div class="chd">${ORB(34)}<h2>Assistant status</h2><span class="bdg ok">${I('check')}Running</span></div><div class="cbd"><div class="kv"><span class="k">Wake word</span><span class="v">“Hey Nova” · enabled</span></div><div class="kv"><span class="k">Microphone</span><span class="v">Default · Realtek® Audio</span></div><div class="kv"><span class="k">Speech</span><span class="v">${I('cpu')}On-device</span></div><div class="row" style="gap:8px;margin-top:6px"><button class="btn pri">${I('mic')}Test voice activation</button><button class="btn sec">${I('set')}Voice settings</button></div></div></section><section class="card" style="margin:0"><div class="chd">${I('spark')}<h2>New here?</h2></div><div class="cbd"><p class="mut" style="font-size:13px">Run the two-minute setup — test your microphone and say your first voice command.</p><button class="btn sec" style="align-self:flex-start">Start setup ${I('ckr',12)}</button></div></section></div><section class="card"><div class="chd"><h2>Today</h2><span class="bdg mut">1 pending</span><span class="bdg ok">${I('check')}1 done</span><span class="grow"></span><button class="more">Open Tasks ${I('ckr',12)}</button></div><div class="cbd"><div class="tlst">${tkRow(TASKS[0])}${tkRow(TASKS[4])}</div></div></section><section class="card"><div class="chd"><h2>Recent voice commands</h2><span class="grow"></span><button class="more">View all ${I('ckr',12)}</button></div><div class="cbd"><div class="arh" style="border-radius:6px"><span class="tm">09:41</span><span class="q">“Add finish my DBMS assignment to my to-dos.”</span><span class="bdg ok">${I('check')}Success</span></div><div class="arh" style="border-radius:6px"><span class="tm">09:12</span><span class="q">“What do I need to finish today?”</span><span class="bdg ok">${I('check')}Success</span></div><div class="arh" style="border-radius:6px"><span class="tm">08:57</span><span class="q">“Open my downloads folder.”</span><span class="bdg ok">${I('check')}Success</span></div></div></section>`);
+
+  const tasksS=()=>shell('tasks',`<div class="ph"><div><h1>Tasks</h1><p class="mut">4 pending · 2 completed</p></div><button class="btn pri">${I('plus')}Add task</button></div><div class="tools"><div class="srch">${I('search')}<input class="inp" placeholder="Search tasks" aria-label="Search tasks"></div><div class="fchips"><button class="fchip on">All <span class="n">6</span></button><button class="fchip">Pending <span class="n">4</span></button><button class="fchip">Completed <span class="n">2</span></button><button class="fchip">Overdue <span class="n">1</span></button></div><span class="grow"></span><select class="sel" style="width:158px" aria-label="Sort tasks"><option>Sort: Due date</option><option>Sort: Priority</option><option>Sort: Created</option></select></div><div class="tlst">${TASKS.map(tkRow).join('')}</div><p class="dim" style="font-size:12px;margin-top:12px">Showing 6 of 6 · tasks created by voice carry a ${I('mic',11)} mark</p>`);
+
+  const tasksE=()=>shell('tasks',`<div class="ph"><div><h1>Tasks</h1><p class="mut">Nothing overdue</p></div><button class="btn pri">${I('plus')}Add task</button></div><div class="tools"><div class="srch">${I('search')}<input class="inp" placeholder="Search tasks" aria-label="Search tasks"></div><div class="fchips"><button class="fchip">All <span class="n">6</span></button><button class="fchip">Pending <span class="n">4</span></button><button class="fchip">Completed <span class="n">2</span></button><button class="fchip on">Overdue <span class="n">0</span></button></div></div><div class="emp" style="margin-top:10px"><span class="eic">${I('check',20)}</span><h2>No overdue tasks</h2><p class="mut" style="max-width:360px;font-size:13px">You’re all caught up — nothing on the list is past due. Add something new here, or say “Hey Nova, add …”.</p><button class="btn sec">${I('plus')}Add a task</button></div>`);
+
+  const arRow=(a,open)=>`<div class="ar${open?' open':''}"><button class="arh"><span class="tm">${a.tm}</span><span class="q">${a.q}</span><span class="bdg mut">${a.it}</span><span class="bdg ${a.st[0]}">${I(a.st[0]==='ok'?'check':a.st[0]==='er'?'alert':'x')}${a.st[1]}</span><span class="cki">${I('ckd')}</span></button><div class="arb"><div class="dgrid"><span class="dk">Heard</span><span>${a.d[0]}</span><span class="dk">Understood</span><span>${a.d[1]}</span><span class="dk">Action</span><span>${a.d[2]}</span><span class="dk">Result</span><span>${a.d[3]}</span></div>${a.st[0]==='er'?`<div class="row" style="gap:8px"><button class="btn sec sm">${I('refresh')}Retry</button><button class="btn gst sm">Open settings</button></div>`:''}</div></div>`;
+  const ACT=[{tm:'09:41',q:'“Add finish my DBMS assignment to my to-dos.”',it:'Add task',st:['ok','Success'],d:['“Add finish my DBMS assignment to my to-dos.”','Add task · “Finish DBMS assignment” · due today 6:00 PM · high','Created in College with a spoken confirmation.','Task added — due today at 6:00 PM.']},{tm:'09:12',q:'“What do I need to finish today?”',it:'Summarize',st:['ok','Success'],d:['“What do I need to finish today?”','Summarize · scope: today','“You have 1 task due today and 1 overdue…”','Spoken summary · nothing changed.']},{tm:'08:57',q:'“Open my downloads folder.”',it:'Open folder',st:['ok','Success'],d:['“Open my downloads folder.”','Open folder · Downloads','Opened File Explorer at the Downloads folder.','Folder opened in File Explorer.']},{tm:'Yest. 22:31',q:'“Delete my library task.”',it:'Delete task',st:['wn','Cancelled'],d:['“Delete my library task.”','Delete task · match “library”','Asked for confirmation — you cancelled.','Nothing deleted. “Return library books” is still on the list.']},{tm:'Yest. 21:40',q:'“What’s on my list for tomorrow?”',it:'Summarize',st:['er','Failed'],d:['“What’s on my list for tomorrow?”','Summarize · scope: tomorrow','Couldn’t reach the speech provider (network timeout).','Nothing changed. Retry, or check provider settings.']}];
+  const actS=()=>shell('activity',`<div class="ph"><div><h1>Activity</h1><p class="mut">What Nova heard, understood, and did</p></div></div><div class="tools"><div class="srch">${I('search')}<input class="inp" placeholder="Search commands" aria-label="Search commands"></div><div class="fchips"><button class="fchip on">All <span class="n">5</span></button><button class="fchip">Success <span class="n">3</span></button><button class="fchip">Failed <span class="n">1</span></button><button class="fchip">Cancelled <span class="n">1</span></button></div></div>${ACT.map((a,i)=>arRow(a,i===4)).join('')}`);
+
+  const setS=()=>shell('settings',`<div class="ph"><h1>Settings</h1></div><div class="set"><nav class="snav"><button class="sni">${I('set')}General</button><button class="sni on">${I('mic')}Voice activation</button><button class="sni">${I('spark')}Speech &amp; AI</button><button class="sni">${I('tasks')}Behavior</button><button class="sni">${I('shield')}Privacy</button><button class="sni">${I('info')}About</button></nav><section class="card" style="margin:0"><div class="srow"><div class="st"><div class="stt">Listen for “Hey Nova”</div><div class="std">Nova reacts only after the phrase. Detection runs on-device and audio is never stored.</div></div><button class="tg on" role="switch" aria-checked="true" aria-label="Listen for Hey Nova"></button></div><div class="srow"><div class="st"><div class="stt">Wake phrase</div><div class="std">Custom phrases aren’t supported yet — more built-ins are planned.</div></div><select class="sel" aria-label="Wake phrase"><option>“Hey Nova”</option><option>“Nova”</option></select></div><div class="srow"><div class="st"><div class="stt">Microphone</div><div class="std">Used for the wake word and commands.</div></div><div class="row"><button class="btn sec sm">Test microphone</button><select class="sel" style="width:212px" aria-label="Microphone"><option>Default · Realtek® Audio</option><option>Logitech BRIO</option></select></div></div><div class="srow"><div class="st"><div class="stt">Sensitivity <span class="stag">Unsupported</span></div><div class="std">Needs a microphone that exposes raw gain — this one doesn’t.</div></div><input class="rng" type="range" disabled aria-label="Wake word sensitivity"></div></section></div>`);
+
+  const obStep=(s,nm,body,fL,fSkip)=>`<div class="obwrap"><div class="obc"><div class="obp">${[1,2,3,4,5,6].map(i=>`<i class="${i<=s?'on':''}"></i>`).join('')}</div><div class="obstep">Step ${s} of 6 — ${nm}</div><div class="obb">${body}</div><div class="obf">${s>1?`<button class="btn gst">Back</button>`:'<span></span>'}${fSkip?`<button class="btn gst">Skip for now</button>`:''}<button class="btn pri">${fL}</button></div></div></div>`;
+  const onb=s=>({
+    1:obStep(1,'Welcome',`<div style="display:flex;align-items:center;gap:18px">${ORB(58)}<h1 style="font-size:28px">Your PC, just a little easier.</h1></div><p class="mut">Nova runs quietly in the background. Say “Hey Nova” and take care of the small stuff without reaching for the keyboard.</p><div style="display:flex;flex-direction:column;gap:8px"><div class="obfeat">${I('mic')}<div><div class="ft">Manage to-dos by voice</div><div class="fd">Add, finish, and recall tasks — just by asking.</div></div></div><div class="obfeat">${I('folder')}<div><div class="ft">Open things for you</div><div class="fd">Apps, files, and folders, hands-free.</div></div></div><div class="obfeat">${I('shield')}<div><div class="ft">Private by default</div><div class="fd">Wake-word detection runs on your PC — you choose what, if anything, goes to the cloud.</div></div></div></div>`,'Continue'),
+    2:obStep(2,'Microphone permission',`<h2>Let Nova hear you</h2><p class="mut">Nova needs microphone access to hear “Hey Nova”. The wake-word detector runs locally — nothing is recorded or sent until you speak the phrase.</p><div class="conf"><div class="ct">If the prompt doesn’t appear</div><div class="std">Windows Settings → Privacy &amp; security → Microphone → allow Nova.</div></div><div class="bnr wn">${I('alert')}<span>Permission denied? Turn it on in Windows Settings, then retry — you can also continue in keyboard-only mode.</span></div>`,'Allow microphone'),
+    3:obStep(3,'Microphone test',`<h2>Test your microphone</h2><div class="fld"><span class="lbl">Microphone</span><select class="sel" style="max-width:330px"><option>Default · Realtek® Audio</option><option>Logitech BRIO webcam</option></select></div><div class="lm">${[3,8,15,24,30,26,18,9,5].map(x=>`<i style="height:${x}px"></i>`).join('')}</div><div class="row" style="gap:8px"><span class="bdg ok">${I('check')}Heard you clearly</span><span class="dim" style="font-size:12px">Level looks good.</span></div>`,'Sounds good'),
+    4:obStep(4,'Assistant setup',`<h2>Make Nova smarter — or keep it local</h2><p class="mut">Optional. Nova works fully on-device; connect a provider for more natural conversation.</p><div class="row" style="gap:10px"><select class="sel" style="flex:1"><option>Windows Speech Recognition — on-device</option><option>Whisper (local)</option></select><span class="bdg mut">${I('cpu')}Local</span></div><div class="row" style="gap:10px"><select class="sel" style="flex:1"><option>No AI provider — rules only</option><option>Ollama · llama3.2</option><option>OpenAI · gpt-4o-mini</option></select><span class="bdg mut">${I('cloud')}Cloud</span></div>`,'Save &amp; continue',1),
+    5:obStep(5,'First command',`<h2>Try your first command</h2><p class="mut">Say: <span style="font-weight:600;color:var(--fg)">“Hey Nova, add test Nova to my to-dos.”</span></p><div class="qbox" style="margin:0">add test Nova to my to-dos…</div><div class="row"><span class="cic ok">${I('check',18)}</span><div><div style="font-size:13.5px;font-weight:600">Task added — nice.</div><div class="mut" style="font-size:12.5px">You’ll find it on your Tasks list.</div></div></div><div class="hint">Can’t speak right now? <span style="text-decoration:underline">Type it instead</span>.</div>`,'Continue'),
+    6:obStep(6,'Ready',`<h2>You’re all set.</h2><p class="mut">Nova now lives in your system tray. Say “Hey Nova” whenever you need it, or click the tray icon for quick controls.</p><div class="row" style="gap:16px;align-items:flex-start"><div class="tray" style="width:236px"><div class="trh" style="padding:8px 8px 6px">${ORB(28)}<div><div style="font-size:12.5px;font-weight:600">Nova</div><div class="row" style="gap:5px"><span class="dot ok"></span><span class="dim" style="font-size:10.5px">Listening</span></div></div></div><button class="ti">${I('pause')}<span class="grow" style="text-align:left">Stop listening</span></button><button class="ti">${I('set')}<span class="grow" style="text-align:left">Settings</span></button></div><p class="hint">Pausing isn’t quitting — Exit is always at the bottom of the tray menu.</p></div>`,'Open Nova')
+  })[s];
+
+  const dlgG=()=>`<div class="nv" style="width:100%;height:100%;background:transparent;padding:28px;overflow:auto"><div class="fgbg" aria-hidden="true"></div><div class="ph"><div><h1>Dialogs &amp; notifications</h1><p class="mut">Reusable confirmations, errors, and toasts. Every error says what happened and what to do next.</p></div></div><div class="gal" style="grid-template-columns:repeat(3,400px) 330px"><div class="dlg"><h3>${I('trash')}Delete this task?</h3><p>“Finish DBMS assignment” will be removed from your list. This can’t be undone.</p><div class="dacts"><button class="btn sec">Cancel</button><button class="btn dst">Delete</button></div></div><div class="dlg"><h3>${I('power')}Shut down this PC?</h3><p>Nova will shut down the computer in 10 seconds. Open apps may lose unsaved work.</p><div class="dacts"><button class="btn sec">Cancel</button><button class="btn dst">Shut down</button></div></div><div class="dlg"><h3>${I('info')}That isn’t supported yet</h3><p>Nova heard “search the web for cheap flights.” Web search is planned. For now, Nova can manage to-dos and open apps, files, and folders.</p><div class="dacts"><button class="btn sec">Dismiss</button><button class="btn pri">Suggest a command</button></div></div><div class="tcol"><div class="tst">${I('check',16,'ok')}<div><div class="tt">Task added</div><div class="ts">“Finish DBMS assignment” · due today 6:00 PM</div></div></div><div class="tst">${I('pause',16,'wn')}<div><div class="tt">Listening paused</div><div class="ts">Nova is still running — resume from the tray.</div></div></div><div class="tst">${I('x',16,'wn')}<div><div class="tt">Command cancelled</div><div class="ts">Nothing was changed.</div></div></div><div class="tst">${I('alert',16,'er')}<div><div class="tt">Couldn’t reach the speech provider</div><div class="ts">Network timeout. Retry, or check settings.</div></div></div></div><div class="dlg"><h3><span class="ic er">${I('alert')}</span>Couldn’t hear you clearly</h3><p>That sounded like “add finish my…”. Speak a little closer to the microphone, or type the command instead.</p><div class="dacts"><button class="btn sec">Type instead</button><button class="btn pri">Try again</button></div></div><div class="dlg"><h3><span class="ic wn">${I('micoff')}</span>Microphone access is off</h3><p>Nova can’t hear “Hey Nova” until it’s allowed in Windows Settings → Privacy &amp; security → Microphone.</p><div class="dacts"><button class="btn sec">Not now</button><button class="btn pri">Open Windows Settings</button></div></div><div class="dlg"><h3><span class="ic er">${I('alert')}</span>Task couldn’t be saved</h3><p>The local database didn’t respond in time. Your command is kept below — nothing was lost.</p><div class="dacts"><button class="btn sec">Dismiss</button><button class="btn pri">${I('refresh')}Retry</button></div></div><div class="dlg"><h3>${I('set')}Unsaved changes</h3><p>You changed the AI provider but haven’t applied it. Leave without applying?</p><div class="dacts"><button class="btn sec">Keep editing</button><button class="btn pri">Discard changes</button></div></div></div></div>`;
+
+  function initScene(){
+    /* ── Row 1: CONTEXT ── */
+    addSection(40,'01 APP SCREENS · CONTEXT');
+    const t=addTitle(100,92,'Nova · app screens',{fontSize:44,fontWeight:700});
+    const d=addText(100,below(t,10),'Every application screen in one token system: dashboard, tasks, activity, settings, first-run onboarding, and the reusable dialog set. Dark-first with a complete light theme — same dimensions, same hierarchy in both.',{fontSize:15,maxWidth:520});
+    const ty=below(d,16);
+    const g1=addTag(100,ty,'Dark-first · full light theme');const g2=addTag(rightOf(g1,8),ty,'1280×832 · Windows app frame');const g3=addTag(rightOf(g2,8),ty,'Sample data');
+    const cy=below(g1,24);
+    const c1=addContextCard(100,cy,360,'Task row anatomy','<ul><li>Checkbox completes · mic mark = created by voice</li><li>Due chip turns red when overdue, checkmark when done</li><li>Priority and category read as text — never color alone</li><li>Edit and delete appear on hover and on keyboard focus</li></ul>');
+    const c2=addContextCard(480,cy,360,'Where the rest lives','<ul><li>Tokens, components & voice overlay: V2 Nova-Canvas.html</li><li>System tray, dialogs & notifications: same board</li><li>Interactive flows A–G: V2 Nova-Prototype.html</li></ul>');
+    const fy=maxY([c1,c2],28);
+    const n1=addNote(100,fy,'State coverage','Empty has its own composition; loading mirrors final row rhythm; offline shows an amber banner that never blocks reading; errors explain what happened and offer Retry.');
+    const n2=addNote(rightOf(n1,20),fy,'Prototype twin','All five states — populated, loading, offline, error, empty — are togglable live in V1 Nova-Prototype.html.');
+
+    /* ── Row 2: STATES MATRIX ── */
+    const r2=maxY([n1,n2],80);
+    addSection(r2,'02 STATES &amp; INTERACTION');
+    const statesC=addDesignSystemCard(100,r2+56,880,'Every surface, every state',`<div style="display:grid;grid-template-columns:132px 1fr;gap:6px 18px;font-size:12px;color:var(--text-secondary)"><span style="color:var(--text)">Dashboard</span><span>populated · loading skeletons · offline banner · error card with Retry · first-run guidance card</span><span style="color:var(--text)">Tasks</span><span>per-filter empty (“No overdue tasks”), loading, saving spinner on modal, save error, delete confirmation</span><span style="color:var(--text)">Activity</span><span>first-use empty, expandable detail rows, retry on failed commands, no-results echo for search</span><span style="color:var(--text)">Settings</span><span>saved toast, unsaved-changes dialog, disabled vs unsupported labelled distinctly</span><span style="color:var(--text)">Voice overlay</span><span>10 states on V1 Nova-Canvas.html — incl. permission denied, cancelled, text-input fallback</span></div>`);
+
+    /* ── Row 3: DELIVERABLES ── */
+    const r3=maxY([statesC],80);
+    addSection(r3,'03 DESIGN DELIVERABLES');
+    let y=r3+60,x=100,p;
+    p=page(x,y,1280,832,'Home dashboard · 1280×832',homeS());x=rightOf(p,40);
+    p=page(x,y,1280,832,'Tasks · 1280×832',tasksS());x=rightOf(p,40);
+    p=page(x,y,1280,832,'Tasks — empty state',tasksE());
+    let y2=maxY([p],48);x=100;
+    p=page(x,y2,1280,832,'Activity · 1280×832',actS());x=rightOf(p,40);
+    p=page(x,y2,1280,832,'Settings · Voice activation · 1280×832',setS());
+    let y3=maxY([p],48);x=100;
+    p=page(x,y3,1280,832,'Home · light theme',homeS(),true);x=rightOf(p,40);
+    p=page(x,y3,1280,832,'Tasks · light theme',tasksS(),true);x=rightOf(p,40);
+    p=page(x,y3,1280,832,'Activity · light theme',actS(),true);x=rightOf(p,40);
+    p=page(x,y3,1280,832,'Settings · light theme',setS(),true);
+    let y4=maxY([p],48);x=100;
+    const OB=['Welcome','Microphone permission','Microphone test','Assistant setup','First command','Ready'];
+    for(let i=1;i<=6;i++){p=page(x,y4,960,600,`Onboarding ${i}/6 — ${OB[i-1]} · 960×600`,onb(i));x=rightOf(p,32);}
+    let y5=maxY([p],48);
+    page(100,y5,1730,800,'Dialogs & notifications gallery · 1730×800',dlgG());
+
+    const r=viewport.getBoundingClientRect();
+    panX=r.width*.04;panY=r.height*.04;updateTransform();
+  }
+  initScene();
+})();
+</script>
+</body>
+</html>

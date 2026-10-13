@@ -1,0 +1,64 @@
+[package]
+name = "nova"
+version = "0.1.0"
+description = "Nova - a voice-controlled personal computer agent for Windows"
+authors = ["Nova"]
+edition = "2021"
+
+[lib]
+name = "nova_lib"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-autostart = "2.7"
+tauri-plugin-global-shortcut = "2.4"
+tauri-plugin-single-instance = "2.5"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+thiserror = "2"
+
+rusqlite = { version = "0.40", features = ["bundled"] }
+chrono = "0.4"
+dirs = "7"
+walkdir = "2"
+dotenvy = "0.15"
+
+hound = "3.5"
+cpal = "0.18"
+whisper-rs = "0.16"
+tts = "0.26"
+
+xcap = "0.9"
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "multipart"] }
+
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_Security_Cryptography",
+  "Win32_System_Com",
+  "Win32_System_Memory",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+] }
+
+[dev-dependencies]
+hound = "3.5"
+tauri = { version = "2", features = ["test"] }
+
+# Compile whisper.cpp with optimizations even in dev builds so local
+# speech recognition stays fast enough to be usable while developing.
+[profile.dev.package.whisper-rs-sys]
+opt-level = 2
+
+[profile.dev.package.whisper-rs]
+opt-level = 2
+
+[profile.release]
+lto = "thin"
